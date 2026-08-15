@@ -53,7 +53,7 @@ export function isTokenExpired ({ token, refresh = false }) {
   const now = Date.now()
 
   return refresh
-    ? !options.isRefreshTokenValid || now - timestamp > 180 * 1000 // 假設 refresh token 有效期為 180 秒
+    ? !options.isRefreshTokenValid || now - timestamp > 360 * 1000 // 假設 refresh token 有效期為 180 秒
     : !options.isAccessTokenValid || now - timestamp > 5 * 1000 // 假設 access token 有效期為 5 秒
 }
 

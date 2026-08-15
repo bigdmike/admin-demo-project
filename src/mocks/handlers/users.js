@@ -1,16 +1,17 @@
-// src/mocks/handlers.js
-import { delay, http, HttpResponse } from 'msw'
-import { db } from './db'
-import { isTokenExpired, setTokenValidity, withAuth } from './middleware/auth'
+import { delay, HttpResponse } from 'msw'
+import { db } from '../database/users'
+import { isTokenExpired, setTokenValidity, withAuth } from '../middleware/auth'
 
-export const userHandlers = [
+export const userHandlers = {
   // 1. 模擬登入 (可模擬 JWT Token)
-  http.post('/api/auth/login', async ({ request }) => {
+  login: async ({ request }) => {
     await delay(200)
     const { account, password } = await request.json()
 
-    const users = db.getUsers()
-    const user = users.find(u => u.account === account && u.password === password)
+    const user = db.users.findFirst({
+      where: { account: { equals: String(account) }, password: { equals: String(password) } },
+    })
+
     if (user) {
       const fakeToken = `mock-access-token-${user.id}-${Date.now()}`
       const refreshToken = `mock-refresh-token-${user.id}-${Date.now()}`
@@ -31,21 +32,26 @@ export const userHandlers = [
     }
 
     return HttpResponse.json({ message: '帳號或密碼錯誤' }, { status: 401 })
-  }),
+  },
 
   // 2. 獲取使用者資訊
-  http.get('/api/auth/me', withAuth(async ({ userId }) => {
-    const users = db.getUsers()
-    const user = users.find(u => u.id === userId)
+  getUserInfo: withAuth(async ({ userId }) => {
+    const user = db.users.findFirst({
+      where: { id: { equals: Number(userId) } },
+    })
+
+    if (!user) {
+      return HttpResponse.json({ message: '使用者不存在' }, { status: 404 })
+    }
 
     return HttpResponse.json({
       code: 200,
       user: { name: user.name, role: user.role },
     })
-  })),
+  }),
 
   // 3. 刷新 Token API
-  http.post('/api/auth/refresh', async ({ cookies }) => {
+  refreshToken: async ({ cookies }) => {
     await delay(200)
     const refreshToken = cookies.refresh_token
 
@@ -71,10 +77,10 @@ export const userHandlers = [
         'Set-Cookie': `refresh_token=${newRefreshToken}; Path=/; Max-Age=86400; SameSite=Lax;`,
       },
     })
-  }),
+  },
 
   // 4. 登出 (清除 Cookie)
-  http.post('/api/auth/logout', () => {
+  logout: () => {
     return new HttpResponse({
       code: 200,
       message: '登出成功',
@@ -83,11 +89,11 @@ export const userHandlers = [
         'Set-Cookie': 'refresh_token=; Path=/; Max-Age=0;', // 讓 MSW 的 Cookie Jar 主動失效
       },
     })
-  }),
+  },
 
   // 5. 強制refresh token過期 (測試用)
-  http.post('/api/auth/expire-refresh-token', () => {
+  expireRefreshToken: () => {
     setTokenValidity({ accessTokenValid: true, refreshTokenValid: false })
     return HttpResponse.json({ message: '已成功將 RefreshToken 設為過期狀態' })
-  }),
-]
+  },
+}
