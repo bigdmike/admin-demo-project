@@ -1,19 +1,37 @@
-// src/utils/request.js
 import axios from 'axios'
+import pinia from '@/plugins/pinia'
 import router from '@/router'
 import { useAppStore } from '@/stores/app'
 
 let inMemoryAccessToken = null
-
-export function setAccessToken (token) {
-  inMemoryAccessToken = token
-}
+let isRefreshing = false
+let requestsQueue = []
 
 const request = axios.create({
   baseURL: '/api', // MSW handler 匹配 /api 開頭的路徑
   timeout: 30 * 1000,
   withCredentials: true, // 允許跨域/同域請求攜帶 Cookie 憑證
 })
+
+function redirectToLogin () {
+  const currentPath = router.currentRoute.value.fullPath
+  if (currentPath === '/login') {
+    return
+  }
+  // 如果currentPath的query已經有redirect參數，則不再添加，避免重複
+  if (router.currentRoute.value.query.redirect) {
+    router.push({
+      path: '/login',
+      query: { redirect: router.currentRoute.value.query.redirect },
+    })
+    return
+  }
+
+  router.push({
+    path: '/login',
+    query: { redirect: currentPath },
+  })
+}
 
 // Request 攔截器：攜帶 Token
 request.interceptors.request.use(config => {
@@ -22,9 +40,6 @@ request.interceptors.request.use(config => {
   }
   return config
 })
-
-let isRefreshing = false
-let requestsQueue = []
 
 // Response 攔截器
 request.interceptors.response.use(
@@ -64,17 +79,13 @@ request.interceptors.response.use(
         // RefreshToken 也過期 (401/403)，清空隊列並導向登入頁
         requestsQueue = []
         setAccessToken(null)
-        const currentPath = router.currentRoute.value.fullPath
-        const appStore = useAppStore()
-        router.push({
-          path: '/login',
-          query: currentPath && currentPath !== '/login' ? { redirect: currentPath } : {},
-        })
+        const appStore = useAppStore(pinia)
         appStore.setSnackbar({
           show: true,
           message: '登入逾期，請重新登入',
           type: 'error',
         })
+        redirectToLogin()
         throw error_
       } finally {
         isRefreshing = false
@@ -84,5 +95,9 @@ request.interceptors.response.use(
     throw error
   },
 )
+
+export function setAccessToken (token) {
+  inMemoryAccessToken = token
+}
 
 export default request

@@ -43,12 +43,17 @@
         }
         setAccessToken(response.authToken)
         appStore.setUserData(response.user)
-        router.push({ name: 'HomePage' })
+        redirectToNextPage()
       })
       .catch(error => {
         console.error('登入失敗', error)
         errorMessage.value = `登入失敗: ${error.message}`
       })
+  }
+
+  function redirectToNextPage () {
+    const redirectPath = router.currentRoute.value.query.redirect || '/'
+    router.push(redirectPath)
   }
 
   function openForgetPwdDialog () {
