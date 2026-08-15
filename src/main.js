@@ -5,7 +5,7 @@ import { createApp } from 'vue'
 import { registerPlugins } from '@/plugins'
 // Components
 import App from './App.vue'
-import { initDb } from './mocks/db'
+import { initDb } from './mocks/database/main'
 
 // Styles
 import 'unfonts.css'
@@ -17,17 +17,20 @@ async function prepareApp () {
   await worker.start({
     onUnhandledRequest (request, print) {
       const url = new URL(request.url)
-
-      // 1. 只有 pathname 是「/api/...」且「不是 .js / .vue 等靜態檔案」才當成 API
-      const isApiRequest = url.pathname.startsWith('/api') && !/\.(?:js|ts|vue|json)$/.test(url.pathname)
+      const isApiRequest = url.pathname.startsWith('/api/')
 
       if (isApiRequest) {
-        print.warning() // 這才是真正漏掉 handler 的 API
+        console.error(
+          '[MSW] 未命中的 API：',
+          request.method,
+          url.pathname,
+        )
+
+        print.error()
         return
       }
 
-      // 2. 其餘前端原始碼與靜態資源直接靜默放行
-      return
+    // 其他靜態資源直接略過
     },
   })
 }
