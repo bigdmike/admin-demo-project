@@ -33,7 +33,7 @@
 
   async function sendLoginRequest () {
     await loginFormRef.value.validate()
-    if (loginFormRef.value.hasError) return
+    if (loginFormRef.value.errors.length > 0) return
 
     loginApi({ account: account.value, password: password.value })
       .then(response => {
@@ -88,7 +88,7 @@
 
           <p class="text-body-medium mt-0 mb-8 text-grey">請登入您的帳號已開始進行網站內容編輯與管理</p>
 
-          <v-form ref="loginFormRef" @submit.prevent>
+          <v-form ref="loginFormRef" @submit.prevent="sendLoginRequest">
             <v-text-field
               v-model.trim="account"
               class="mb-3"
