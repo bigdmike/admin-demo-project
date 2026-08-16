@@ -17,3 +17,27 @@
 .link-hover:hover {
   text-decoration: underline;
 }
+
+.drag-list {
+  user-select: none;
+
+  .no-move {
+    transition: transform 0s;
+  }
+
+  .ghost {
+    opacity: 0;
+  }
+
+  .drag-list-item {
+    cursor: move;
+  }
+
+  .drag-list-item i {
+    cursor: pointer;
+  }
+}
+
+.flip-list-move {
+  transition: transform 0.3s;
+}
