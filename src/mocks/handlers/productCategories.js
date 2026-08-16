@@ -66,7 +66,10 @@ export const productCategoriesHandlers = {
       data: { sortOrder: prev => prev + 1 },
     })
 
-    const newCategory = db.category.create(categoryData)
+    const newCategory = db.category.create({
+      ...categoryData,
+      id: 'cat_' + String(Date.now()),
+    })
     persistDatabase()
 
     return HttpResponse.json({
