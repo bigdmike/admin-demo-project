@@ -8,7 +8,7 @@ export function getProductCategory ({ page, itemsPerPage, keyword }) {
     queryParams.push(`page=${page}`)
   }
   if (itemsPerPage) {
-    queryParams.push(`itemsPerPage=${itemsPerPage}`)
+    queryParams.push(`limit=${itemsPerPage}`)
   }
   if (keyword) {
     queryParams.push(`keyword=${encodeURIComponent(keyword)}`)
