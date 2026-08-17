@@ -1,5 +1,6 @@
 import { http } from 'msw'
 import { setupWorker } from 'msw/browser'
+import { productBrandsHandlers } from './handlers/productBrands'
 import { productCategoriesHandlers } from './handlers/productCategories'
 import { userHandlers } from './handlers/users'
 
@@ -19,4 +20,12 @@ export const worker = setupWorker(
   http.put('/api/product/categories/sort', productCategoriesHandlers.sortCategories),
   http.put('/api/product/categories/:id', productCategoriesHandlers.updateCategory),
   http.delete('/api/product/categories/:id', productCategoriesHandlers.deleteCategory),
+
+  // 商品品牌相關的 API
+  http.get('/api/product/brands', productBrandsHandlers.getBrands),
+  http.get('/api/product/brands/:id', productBrandsHandlers.getBrand),
+  http.post('/api/product/brands', productBrandsHandlers.createBrand),
+  http.put('/api/product/brands/sort', productBrandsHandlers.sortBrands),
+  http.put('/api/product/brands/:id', productBrandsHandlers.updateBrand),
+  http.delete('/api/product/brands/:id', productBrandsHandlers.deleteBrand),
 )
