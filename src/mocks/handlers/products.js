@@ -1,23 +1,58 @@
 // src/mocks/handlers.js
-import { delay, http, HttpResponse } from 'msw'
+import { delay, HttpResponse } from 'msw'
 import { db, persistDatabase } from '../database/products'
 import { withAuth } from '../middleware/auth'
+import { presentProduct } from '../presenters/product'
 
-export const productHandlers = [
+export const productHandlers = {
 
   // 1. 獲取商品列表
-  http.get('/api/products', withAuth(async () => {
+  getProducts: withAuth(async ({ request }) => {
     await delay(200)
-    const products = db.product.getAll()
+    // 1. 將 request.url 轉成 URL 物件
+    const url = new URL(request.url)
+
+    // 2. 使用 searchParams 取得單一參數（沒傳時回傳 null）
+    const page = url.searchParams.get('page') || '1'
+    const limit = url.searchParams.get('limit') || '10'
+    const keyword = url.searchParams.get('keyword') || ''
+    const products = db.product.findMany({
+      orderBy: {
+        sortOrder: 'asc',
+      },
+    }).map(product => presentProduct(db, product))
+
+    // 3. 根據 keyword 過濾分類
+    const filteredProducts = products.filter(product =>
+      product.name.includes(keyword),
+    ).map(product => {
+      let stockQuantity = product.variants.map(variant => variant.inventory.stockQuantity || 0)
+      stockQuantity = stockQuantity.reduce((a, b) => a + b, 0)
+      return {
+        name: product.name,
+        status: product.status,
+        stockQuantity,
+        id: product.id,
+        soldCount: 0,
+      }
+    })
+
+    // 4. 分頁邏輯
+    const startIndex = (Number(page) - 1) * Number(limit)
+    const endIndex = startIndex + Number(limit)
+    const paginatedProducts = filteredProducts.slice(startIndex, endIndex)
 
     return HttpResponse.json({
       code: 200,
-      products,
+      items: paginatedProducts,
+      total: filteredProducts.length,
+      page: Number(page),
+      limit: Number(limit),
     })
-  })),
+  }),
 
   // 2. 獲取單一商品
-  http.get('/api/products/:id', withAuth(async ({ params }) => {
+  getProduct: withAuth(async ({ params }) => {
     await delay(200)
     const product = db.product.findFirst({
       where: { id: { equals: String(params.id) } },
@@ -29,12 +64,12 @@ export const productHandlers = [
 
     return HttpResponse.json({
       code: 200,
-      product,
+      product: presentProduct(db, product),
     })
-  })),
+  }),
 
   // 3. 新增商品
-  http.post('/api/products', withAuth(async ({ request }) => {
+  createProduct: withAuth(async ({ request }) => {
     await delay(200)
     const productData = await request.json()
 
@@ -44,57 +79,36 @@ export const productHandlers = [
       data: { sortOrder: prev => prev + 1 },
     })
 
-    const newProduct = db.product.create(productData)
+    const newProduct = db.product.create({
+      ...productData,
+      id: 'prod_' + String(Date.now()),
+    })
     persistDatabase()
 
     return HttpResponse.json({
       code: 200,
       product: newProduct,
     })
-  })),
-
-  // 4. 更新商品
-  http.put('/api/products/:id', withAuth(async ({ params, request }) => {
-    await delay(200)
-
-    const existingProduct = db.product.findFirst({
-      where: { id: { equals: String(params.id) } },
-    })
-    if (!existingProduct) {
-      return HttpResponse.json({ message: '商品不存在' }, { status: 404 })
-    }
-
-    const updateData = await request.json()
-    const updatedProduct = db.product.update({
-      where: { id: { equals: String(params.id) } },
-      data: updateData,
-    })
-    persistDatabase()
-
-    return HttpResponse.json({
-      code: 200,
-      product: updatedProduct,
-    })
-  })),
+  }),
 
   // 5. 排序商品
-  http.post('/api/products/sort', withAuth(async ({ request }) => {
+  sortProducts: withAuth(async ({ request }) => {
     await delay(200)
-    const { sortedIds } = await request.json()
+    const sortData = await request.json()
 
     // 依照 sortedIds 的順序更新 sortOrder
-    for (const [index, id] of sortedIds.entries()) {
+    for (const item of sortData) {
       db.product.update({
-        where: { id: { equals: String(id) } },
-        data: { sortOrder: index + 1 },
+        where: { id: { equals: String(item.id) } },
+        data: { sortOrder: item.sortOrder },
       })
     }
     persistDatabase()
     return HttpResponse.json({ code: 200 })
-  })),
+  }),
 
   // 6. 刪除商品
-  http.delete('/api/products/:id', withAuth(async ({ params }) => {
+  deleteProduct: withAuth(async ({ params }) => {
     await delay(200)
     const existingProduct = db.product.findFirst({
       where: { id: { equals: String(params.id) } },
@@ -109,5 +123,5 @@ export const productHandlers = [
 
     persistDatabase()
     return HttpResponse.json({ code: 200 })
-  })),
-]
+  }),
+}
