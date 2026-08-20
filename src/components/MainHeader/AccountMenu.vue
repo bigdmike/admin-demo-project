@@ -2,7 +2,9 @@
   import { useRouter } from 'vue-router'
   import { expireRefreshToken, getUserInfo, logoutApi } from '@/api/user'
   import { useAppStore } from '@/stores/app'
+  import { useAuthStore } from '@/stores/auth'
 
+  const authStore = useAuthStore()
   const appStore = useAppStore()
   const router = useRouter()
 
@@ -20,6 +22,7 @@
     logoutApi()
       .then(response => {
         console.log('登出成功', response)
+        authStore.logout()
         appStore.setSnackbar({ show: true, message: '登出成功', type: 'success' })
         router.push({ name: 'LoginPage' })
       })
@@ -45,6 +48,7 @@
   >
     <template #activator="{ props }">
       <v-btn
+        v-if="authStore.isAuthenticated"
         v-bind="props"
         class="px-2"
         size="large"
@@ -62,7 +66,7 @@
             />
           </v-avatar>
 
-          <h6 class="text-title-medium my-0">LYZ User</h6>
+          <h6 class="text-title-medium my-0">{{ authStore.user.name }}</h6>
         </div>
       </v-btn>
     </template>

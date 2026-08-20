@@ -1,9 +1,8 @@
 import axios from 'axios'
-import pinia from '@/plugins/pinia'
 import router from '@/router'
 import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
 
-let inMemoryAccessToken = null
 let isRefreshing = false
 let requestsQueue = []
 
@@ -12,6 +11,18 @@ const request = axios.create({
   timeout: 30 * 1000,
   withCredentials: true, // 允許跨域/同域請求攜帶 Cookie 憑證
 })
+
+// 處理佇列排隊的請求（成功給新 Token 重試，失敗全部 Reject 拋錯）
+function processQueue (error, token = null) {
+  for (const promise of requestsQueue) {
+    if (error) {
+      promise.reject(error)
+    } else {
+      promise.resolve(token)
+    }
+  }
+  requestsQueue = []
+}
 
 function redirectToLogin () {
   const currentPath = router.currentRoute.value.fullPath
@@ -35,8 +46,9 @@ function redirectToLogin () {
 
 // Request 攔截器：攜帶 Token
 request.interceptors.request.use(config => {
-  if (inMemoryAccessToken) {
-    config.headers.Authorization = `Bearer ${inMemoryAccessToken}`
+  const authStore = useAuthStore()
+  if (authStore.accessToken) {
+    config.headers.Authorization = `Bearer ${authStore.accessToken}`
   }
   return config
 })
@@ -46,16 +58,25 @@ request.interceptors.response.use(
   response => response.data,
   async error => {
     const originalRequest = error.config
+    const authStore = useAuthStore()
+    const appStore = useAppStore()
+    const isAuthRequest = ['/auth/login', '/auth/refresh']
+      .some(path => originalRequest.url.includes(path))
 
     // 排除登入、刷新自身失敗，避免死循環
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/auth/refresh')) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
       if (isRefreshing) {
-        return new Promise(resolve => {
-          requestsQueue.push(newToken => {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`
-            resolve(request(originalRequest))
-          })
+        return new Promise((resolve, reject) => {
+          requestsQueue.push({ resolve, reject })
         })
+          .then(token => {
+            originalRequest._retry = true // 標記已重試，防止二次 401 循環
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            return request(originalRequest)
+          })
+          .catch(error_ => {
+            throw error_
+          })
       }
 
       originalRequest._retry = true
@@ -65,21 +86,21 @@ request.interceptors.response.use(
         // 呼叫刷新 API：完全不用傳 Body，瀏覽器會自動帶上 refresh_token Cookie
         const res = await axios.post('/api/auth/refresh', {}, { withCredentials: true })
         const newAccessToken = res.data.authToken
+        const userData = res.data.user
 
-        setAccessToken(newAccessToken)
+        authStore.setAccessToken(newAccessToken)
+        authStore.setUser(userData)
 
-        for (const cb of requestsQueue) {
-          cb(newAccessToken)
-        }
-        requestsQueue = []
+        // 2. 喚醒所有在佇列中排隊的請求，並派發新 Token
+        processQueue(null, newAccessToken)
 
+        // 3. 重送自己這第一個請求
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
         return request(originalRequest)
       } catch (error_) {
         // RefreshToken 也過期 (401/403)，清空隊列並導向登入頁
         requestsQueue = []
-        setAccessToken(null)
-        const appStore = useAppStore(pinia)
+        authStore.logout()
         appStore.setSnackbar({
           show: true,
           message: '登入逾期，請重新登入',
@@ -95,9 +116,5 @@ request.interceptors.response.use(
     throw error
   },
 )
-
-export function setAccessToken (token) {
-  inMemoryAccessToken = token
-}
 
 export default request

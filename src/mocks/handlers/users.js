@@ -66,10 +66,14 @@ export const userHandlers = {
     const userId = tokenData[3]
     const newFakeToken = `mock-access-token-${userId}-${Date.now()}`
     const newRefreshToken = `mock-refresh-token-${userId}-${Date.now()}`
+    const user = db.users.findFirst({
+      where: { id: { equals: Number(userId) } },
+    })
 
     return HttpResponse.json({
       code: 200,
       authToken: newFakeToken,
+      user: { name: user.name, role: user.role },
       message: 'Token 刷新成功',
     },
     {
