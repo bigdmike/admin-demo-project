@@ -1,6 +1,6 @@
 <template>
   <v-app id="inspire">
-    <v-navigation-drawer v-if="!isLoginPage" v-model="drawer">
+    <v-navigation-drawer v-if="authStore.isAuthenticated" v-model="drawer">
       <v-sheet
         class="px-4 pt-4"
       >
@@ -48,7 +48,7 @@
 
     </v-navigation-drawer>
 
-    <v-app-bar v-if="!isLoginPage">
+    <v-app-bar v-if="authStore.isAuthenticated">
       <div class="d-flex align-center">
         <v-app-bar-nav-icon @click="drawer = !drawer" />
       </div>
@@ -76,10 +76,11 @@
   import MainDialog from '@/components/MainDialog.vue'
   import AccountMenu from '@/components/MainHeader/AccountMenu.vue'
   import MainSnackbar from '@/components/MainSnackbar.vue'
+  import { useAuthStore } from '@/stores/auth'
 
+  const authStore = useAuthStore()
   const router = useRouter()
   const drawer = ref(null)
-  const isLoginPage = computed(() => router.currentRoute.value.name === 'LoginPage')
   const menuList = [
     {
       title: '商品相關',

@@ -27,6 +27,14 @@ export function getUserInfo () {
   })
 }
 
+// refresh token
+export function refreshToken () {
+  return request({
+    url: '/auth/refresh',
+    method: 'post',
+  })
+}
+
 // 強制 refresh token 過期 (測試用)
 export function expireRefreshToken () {
   return request({
