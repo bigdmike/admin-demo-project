@@ -4,14 +4,15 @@
   import { useRouter } from 'vue-router'
   import { loginApi } from '@/api/user'
   import { useAppStore } from '@/stores/app'
-  import { setAccessToken } from '@/utils/request'
+  import { useAuthStore } from '@/stores/auth'
 
+  const authStore = useAuthStore()
   const appStore = useAppStore()
   const router = useRouter()
 
   const loginFormRef = ref(null)
-  const account = ref('admin@example.com')
-  const password = ref('admin123')
+  const account = ref('') // admin@example.com
+  const password = ref('') // admin123
   const errorMessage = ref('')
   const showPassword = ref(false)
   const rememberAccount = ref(false)
@@ -41,13 +42,13 @@
         if (rememberAccount.value) {
           localStorage.setItem('rememberedAccount', account.value)
         }
-        setAccessToken(response.authToken)
-        appStore.setUserData(response.user)
+        authStore.setAccessToken(response.authToken)
+        authStore.setUser(response.user)
         redirectToNextPage()
       })
       .catch(error => {
         console.error('登入失敗', error)
-        errorMessage.value = `登入失敗: ${error.message}`
+        errorMessage.value = error.response?.data?.message || `登入失敗: ${error.message}`
       })
   }
 
@@ -92,6 +93,7 @@
             <v-text-field
               v-model.trim="account"
               class="mb-3"
+              data-testid="account-input"
               density="comfortable"
               label="帳號"
               placeholder="example@gmail.com"
@@ -102,6 +104,7 @@
             <v-text-field
               v-model.trim="password"
               :append-inner-icon="showPassword ? mdiEyeOff : mdiEye"
+              data-testid="password-input"
               density="comfortable"
               label="密碼"
               placeholder="請輸入密碼"
@@ -127,6 +130,7 @@
               block
               class="mt-2 font-weight-bold"
               color="lime"
+              data-testid="login-btn"
               size="large"
               type="submit"
               @click="sendLoginRequest"
