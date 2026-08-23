@@ -11,8 +11,8 @@
   const router = useRouter()
 
   const loginFormRef = ref(null)
-  const account = ref('admin@example.com') // admin@example.com
-  const password = ref('admin123') // admin123
+  const account = ref('') // admin@example.com
+  const password = ref('') // admin123
   const errorMessage = ref('')
   const showPassword = ref(false)
   const rememberAccount = ref(false)
@@ -48,7 +48,7 @@
       })
       .catch(error => {
         console.error('登入失敗', error)
-        errorMessage.value = error.response?.data?.message || `登入失敗: ${error.message}`
+        errorMessage.value = error.response?.data?.message || `${error.message}`
       })
   }
 
