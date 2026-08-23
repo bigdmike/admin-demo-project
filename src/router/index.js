@@ -18,13 +18,13 @@ const router = createRouter({
     {
       name: 'ProductCategoryListPage',
       path: '/product/categories',
-      component: () => import('@/pages/ProductCategoriesPage.vue'),
+      component: () => import('@/pages/ProductCategoryListPage.vue'),
       meta: { requiresAuth: true },
     },
     {
       name: 'ProductBrandListPage',
       path: '/product/brands',
-      component: () => import('@/pages/ProductBrandsPage.vue'),
+      component: () => import('@/pages/ProductBrandListPage.vue'),
       meta: { requiresAuth: true },
     },
     {

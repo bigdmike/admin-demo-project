@@ -48,7 +48,7 @@
       })
       .catch(error => {
         console.error('登入失敗', error)
-        errorMessage.value = error.response?.data?.message || `登入失敗: ${error.message}`
+        errorMessage.value = error.response?.data?.message || `${error.message}`
       })
   }
 

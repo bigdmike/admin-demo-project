@@ -113,7 +113,7 @@ request.interceptors.response.use(
       }
     }
 
-    throw error
+    throw error.response?.data
   },
 )
 
