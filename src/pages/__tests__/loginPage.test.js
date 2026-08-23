@@ -6,7 +6,7 @@ import { VAlert } from 'vuetify/components'
 import LoginPage from '@/pages/LoginPage.vue'
 import vuetify from '@/plugins/vuetify'
 import { useAuthStore } from '@/stores/auth'
-import { server } from './server'
+import { server } from '../../mocks/server'
 
 // 1. Mock Vue Router 的 push 與 currentRoute
 const mockPush = vi.fn()

@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/stores/auth'
 import request from '@/utils/request' // 你的 axios 實例
-import { server } from './server'
+import { server } from '../../mocks/server'
 
 describe('Axios 401 Interceptor (純單元測試)', () => {
   beforeEach(() => {

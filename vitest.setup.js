@@ -1,5 +1,14 @@
 import { afterAll, afterEach, beforeAll } from 'vitest'
-import { server } from './src/tests/server'
+import { server } from '@/mocks/server'
+
+globalThis.visualViewport = {
+  height: 768,
+  width: 1024,
+  offsetLeft: 0,
+  offsetTop: 0,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+}
 
 // 測試啟動前開啟 MSW 監聽
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))

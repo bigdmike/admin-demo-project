@@ -1,12 +1,15 @@
 <script setup>
   import { mdiContentSave, mdiDelete, mdiMagnify, mdiPlus, mdiSort, mdiSquareEditOutline } from '@mdi/js'
-  import { ref } from 'vue'
+  import { computed, ref } from 'vue'
+  import { useRoute, useRouter } from 'vue-router'
   import { createProductCategory, deleteProductCategory, getProductCategory, sortProductCategory, updateProductCategory } from '@/api/productCategory'
   import DeleteDialog from '@/components/MainDeleteDialog.vue'
   import MainDragList from '@/components/MainDragList.vue'
   import EditDialog from '@/components/ProductCategories/EditDialog.vue'
   import { useAppStore } from '@/stores/app'
 
+  const route = useRoute()
+  const router = useRouter()
   const appStore = useAppStore()
   const dragListRef = ref(null)
   const editDialogRef = ref(null)
@@ -25,12 +28,12 @@
       align: 'end',
     },
   ])
-  const keyword = ref('')
+  const keyword = ref(route.query.keyword || '')
+  const itemsPerPage = ref(route.query.itemsPerPage || '10')
+  const page = ref(route.query.page || '1')
   const serverItems = ref([])
   const loading = ref(false)
   const totalItems = ref(0)
-  const itemsPerPage = ref(10)
-  const page = ref(1)
   const sortMode = ref(false)
 
   function toggleSortMode () {
@@ -51,12 +54,33 @@
     deleteDialogRef.value.openDialog('刪除商品分類', '確定要刪除這個商品分類嗎？', id)
   }
 
-  function loadItems ({ page, itemsPerPage }) {
+  function loadItems ({ page: currentPage, itemsPerPage: currentItemsPerPage }) {
     if (loading.value) return
     loading.value = true
-    getProductCategory({ page, itemsPerPage, keyword: keyword.value }).then(({ items, total }) => {
+
+    const query = {
+      ...route.query,
+      page: String(currentPage),
+      itemsPerPage: String(currentItemsPerPage),
+    }
+    if (keyword.value === '') {
+      delete query.keyword
+    } else {
+      query.keyword = keyword.value
+    }
+    router.push({ query })
+
+    getProductCategory({ page: currentPage, itemsPerPage: currentItemsPerPage, keyword: keyword.value }).then(({ items, total }) => {
       serverItems.value = items
       totalItems.value = total
+      loading.value = false
+    }).catch(error => {
+      appStore.setSnackbar({
+        show: true,
+        message: error?.message || '載入商品分類失敗',
+        type: 'error',
+      })
+    }).finally(() => {
       loading.value = false
     })
   }
@@ -162,13 +186,14 @@
                   v-model="keyword"
                   :append-inner-icon="mdiMagnify"
                   color="lime"
+                  data-testid="keyword-input"
                   density="compact"
                   hide-details
                   label="搜尋"
                   single-line
                   variant="outlined"
                   width="300"
-                  @change="loadItems({ page: 1, itemsPerPage: itemsPerPage.value })"
+                  @change="loadItems({ page: 1, itemsPerPage })"
                 />
               </v-col>
 
@@ -176,7 +201,7 @@
 
               <v-col class="d-flex justify-end" md="3">
                 <v-btn class="mr-4" color="black" :prepend-icon="mdiSort" @click="toggleSortMode">調整排序</v-btn>
-                <v-btn color="lime" :prepend-icon="mdiPlus" @click="openEditDialog(null)">新增分類</v-btn>
+                <v-btn color="lime" data-testid="add-button" :prepend-icon="mdiPlus" @click="openEditDialog(null)">新增分類</v-btn>
               </v-col>
             </v-row>
           </v-card-text>
@@ -198,23 +223,34 @@
 
           <v-data-table-server
             v-show="!sortMode"
-            v-model:items-per-page="
-              itemsPerPage"
+            v-model:items-per-page="itemsPerPage"
+            v-model:page="page"
             :headers="headers"
             item-value="name"
             :items="serverItems"
             :items-length="totalItems"
             :loading="loading"
-            :page="page"
             @update:options="loadItems"
           >
             <template #item.actions="{ item }">
               <div class="d-flex justify-end">
-                <v-btn elevation="0" icon size="small" @click="openEditDialog(item)">
+                <v-btn
+                  data-testid="edit-button"
+                  elevation="0"
+                  icon
+                  size="small"
+                  @click="openEditDialog(item)"
+                >
                   <v-icon color="medium-emphasis" :icon="mdiSquareEditOutline" />
                 </v-btn>
 
-                <v-btn elevation="0" icon size="small" @click="openDeleteDialog(item.id)">
+                <v-btn
+                  data-testid="delete-button"
+                  elevation="0"
+                  icon
+                  size="small"
+                  @click="openDeleteDialog(item.id)"
+                >
                   <v-icon color="medium-emphasis" :icon="mdiDelete" />
                 </v-btn>
               </div>
