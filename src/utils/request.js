@@ -99,7 +99,7 @@ request.interceptors.response.use(
         return request(originalRequest)
       } catch (error_) {
         // RefreshToken 也過期 (401/403)，清空隊列並導向登入頁
-        requestsQueue = []
+        processQueue(error_)
         authStore.logout()
         appStore.setSnackbar({
           show: true,

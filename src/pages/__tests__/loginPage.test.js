@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { VAlert } from 'vuetify/components'
@@ -157,5 +157,41 @@ describe('Login.vue 登入畫面功能驗證', () => {
       expect(authStore.accessToken).toBeNull()
       expect(mockPush).not.toHaveBeenCalled()
     })
+  })
+
+  it('5. 等待登入請求傳送時，按鈕應該被禁用', async () => {
+    const wrapper = createWrapper()
+    const accountField = wrapper.find('[data-testid="account-input"]')
+    const accountFieldInput = accountField.find('input')
+    const passwordField = wrapper.find('[data-testid="password-input"]')
+    const passwordFieldInput = passwordField.find('input')
+    const loginBtn = wrapper.find('[data-testid="login-btn"]')
+
+    // 透過 MSW 模擬登入成功回應
+
+    server.use(
+      http.post('*/api/auth/login', async () => {
+        await delay(2000) // 模擬網路延遲
+        return HttpResponse.json({
+          authToken: 'valid_access_token',
+          user: { id: 1, name: 'Admin', role: 'admin' },
+        })
+      }),
+    )
+
+    // 輸入帳號與密碼
+    await accountFieldInput.setValue('admin@example.com')
+    await passwordFieldInput.setValue('password123')
+
+    expect(loginBtn.element.disabled).toBe(false)
+
+    await loginBtn.trigger('click')
+
+    await vi.waitFor(() => {
+      expect(loginBtn.element.disabled).toBe(true)
+    })
+    await vi.waitFor(() => {
+      expect(loginBtn.element.disabled).toBe(false)
+    }, { timeout: 3000 })
   })
 })

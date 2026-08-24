@@ -16,6 +16,7 @@
   const errorMessage = ref('')
   const showPassword = ref(false)
   const rememberAccount = ref(false)
+  const loading = ref(false)
 
   const accountRules = [
     value => {
@@ -33,6 +34,8 @@
   ]
 
   async function sendLoginRequest () {
+    if (loading.value) return
+    loading.value = true
     await loginFormRef.value.validate()
     if (loginFormRef.value.errors.length > 0) return
 
@@ -49,6 +52,9 @@
       .catch(error => {
         console.error('登入失敗', error)
         errorMessage.value = error.response?.data?.message || `${error.message}`
+      })
+      .finally(() => {
+        loading.value = false
       })
   }
 
@@ -131,10 +137,21 @@
               class="mt-2 font-weight-bold"
               color="lime"
               data-testid="login-btn"
+              :disabled="loading"
               size="large"
               type="submit"
               @click="sendLoginRequest"
-            >登入</v-btn>
+            >
+              <v-progress-circular
+                v-if="loading"
+                color="black"
+                indeterminate
+              />
+
+              <template v-else>
+                登入
+              </template>
+            </v-btn>
 
             <v-alert
               v-if="errorMessage"

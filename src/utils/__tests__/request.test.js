@@ -131,4 +131,47 @@ describe('Axios 401 Interceptor (純單元測試)', () => {
     expect(authStore.accessToken).toBe('refreshed_token_123')
     expect(tokenRefreshCount).toBe(1)
   })
+
+  it('併發佇列401失敗', async () => {
+    // 在authStore中先塞入一個假裝過期的憑證字串
+    const authStore = useAuthStore()
+    authStore.setAccessToken('expired_token')
+    let originalApiCallCount = 0
+    let refreshCallCount = 0
+
+    server.use(
+      http.get('*/api/auth/me', ({ request: req }) => {
+        originalApiCallCount++
+        const authHeader = req.headers.get('Authorization')
+
+        // 第一次請求會帶著過期的 Token，回傳 401
+        if (authHeader === 'Bearer expired_token') {
+          return new HttpResponse(null, { status: 401 })
+        }
+
+        // 其他情況，回傳 403
+        return new HttpResponse(null, { status: 403 })
+      }),
+
+      // 第一次請求回傳401後會出發請求換證的流程，這裡模擬換證成功，回傳新的 Token
+      http.post('*/api/auth/refresh', () => {
+        refreshCallCount += 1
+        return new HttpResponse(null, { status: 401 })
+      }),
+    )
+
+    // 發送業務請求（觸發 401 -> 觸發 refresh -> 自動重送）
+    const promiseList = [
+      request.get('/api/auth/me'),
+      request.get('/api/auth/me'),
+      request.get('/api/auth/me'),
+      request.get('/api/auth/me'),
+    ]
+    const responses = await Promise.allSettled(promiseList)
+
+    expect(responses).toHaveLength(4)
+    expect(responses.every(({ status }) => status === 'rejected')).toBe(true)
+    expect(originalApiCallCount).toBe(4)
+    expect(refreshCallCount).toBe(1)
+  })
 })
